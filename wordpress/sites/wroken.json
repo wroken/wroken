@@ -1,0 +1,66 @@
+{
+  "id": "wroken",
+  "name": "Wroken",
+  "url": "https://wroken.com",
+  "enabled": false,
+  "language": "es-CL",
+  "niche": "REVISAR: temática del sitio (supuesto: tecnología, internet y cultura digital)",
+  "audience": "REVISAR",
+  "tone": "cercano, claro y bien documentado; tuteo; sin exageraciones",
+  "guidelines": [
+    "No inventar datos, cifras ni citas: todo dato verificable debe venir de una fuente enlazada"
+  ],
+  "frequency": {
+    "everyHours": 24,
+    "maxPostsPerRun": 1
+  },
+  "publishing": {
+    "status": "publish",
+    "minQualityScore": 7,
+    "author": null,
+    "defaultCategory": "Tecnología",
+    "allowNewCategories": false
+  },
+  "content": {
+    "minWords": 900,
+    "maxWords": 1600,
+    "minSources": 3,
+    "includeFaq": true,
+    "includeSourcesSection": true,
+    "internalLinks": 3
+  },
+  "categories": [
+    "Tecnología"
+  ],
+  "topics": {
+    "pillars": [
+      "Tecnología",
+      "Inteligencia artificial",
+      "Internet y redes sociales"
+    ],
+    "seedTopics": [],
+    "avoid": []
+  },
+  "sources": {
+    "preferred": [],
+    "blocked": []
+  },
+  "images": {
+    "featured": [
+      "magnific",
+      "higgsfield",
+      "internet"
+    ],
+    "inContent": 1,
+    "style": "fotografía editorial realista, luz natural, sin texto ni logos",
+    "aspectRatio": "16:9",
+    "internetProviders": [
+      "openverse",
+      "wikimedia",
+      "pexels"
+    ]
+  },
+  "seo": {
+    "plugin": "auto"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "id": "ladeportiva",
+  "name": "La Deportiva",
+  "url": "https://ladeportiva.cl",
+  "enabled": true,
+  "language": "es-CL",
+  "niche": "REVISAR (supuesto): deporte chileno e internacional",
+  "audience": "Aficionados al deporte en Chile",
+  "tone": "cercano, claro y bien documentado; tuteo; sin exageraciones",
+  "guidelines": [
+    "No inventar datos, cifras ni citas: todo dato verificable debe venir de una fuente enlazada",
+    "Priorizar actualidad: resultados, fichajes y previas de los últimos 7 días"
+  ],
+  "frequency": {
+    "everyHours": 12,
+    "maxPostsPerRun": 1
+  },
+  "publishing": {
+    "status": "publish",
+    "minQualityScore": 7,
+    "author": null,
+    "defaultCategory": "Fútbol",
+    "allowNewCategories": false
+  },
+  "content": {
+    "minWords": 600,
+    "maxWords": 1100,
+    "minSources": 3,
+    "includeFaq": true,
+    "includeSourcesSection": true,
+    "internalLinks": 3
+  },
+  "categories": [
+    "Fútbol"
+  ],
+  "topics": {
+    "pillars": [
+      "Fútbol chileno",
+      "La Roja",
+      "Tenis",
+      "Deporte internacional"
+    ],
+    "seedTopics": [],
+    "avoid": []
+  },
+  "sources": {
+    "preferred": [
+      "anfp.cl"
+    ],
+    "blocked": []
+  },
+  "images": {
+    "featured": [
+      "internet",
+      "magnific",
+      "higgsfield"
+    ],
+    "inContent": 1,
+    "style": "fotografía editorial realista, luz natural, sin texto ni logos",
+    "aspectRatio": "16:9",
+    "internetProviders": [
+      "openverse",
+      "wikimedia",
+      "pexels"
+    ]
+  },
+  "seo": {
+    "plugin": "auto"
+  }
+}

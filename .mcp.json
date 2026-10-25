@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "autoblog": {
+      "command": "node",
+      "args": ["wordpress/mcp-server/start.mjs"]
+    }
+  }
+}

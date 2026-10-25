@@ -1,0 +1,47 @@
+{
+  "id": "misitio",
+  "name": "Mi Sitio",
+  "url": "https://misitio.com",
+  "enabled": true,
+  "language": "es-CL",
+  "niche": "De qué trata el sitio, en una frase",
+  "audience": "Para quién escribimos",
+  "tone": "cercano, claro y bien documentado; tuteo; sin exageraciones",
+  "guidelines": [
+    "Reglas editoriales propias del sitio, una por línea"
+  ],
+  "frequency": { "everyHours": 24, "maxPostsPerRun": 1 },
+  "publishing": {
+    "status": "publish",
+    "minQualityScore": 7,
+    "author": null,
+    "defaultCategory": "Noticias",
+    "allowNewCategories": false
+  },
+  "content": {
+    "minWords": 900,
+    "maxWords": 1600,
+    "minSources": 3,
+    "includeFaq": true,
+    "includeSourcesSection": true,
+    "internalLinks": 3
+  },
+  "categories": ["Noticias"],
+  "topics": {
+    "pillars": ["Tema principal 1", "Tema principal 2"],
+    "seedTopics": [],
+    "avoid": ["Temas que no se deben tocar"]
+  },
+  "sources": {
+    "preferred": ["dominio-confiable.cl"],
+    "blocked": ["dominio-poco-fiable.com"]
+  },
+  "images": {
+    "featured": ["internet", "magnific", "higgsfield"],
+    "inContent": 1,
+    "style": "fotografía editorial realista, luz natural, sin texto ni logos",
+    "aspectRatio": "16:9",
+    "internetProviders": ["openverse", "wikimedia", "pexels"]
+  },
+  "seo": { "plugin": "auto" }
+}

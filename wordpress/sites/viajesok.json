@@ -1,0 +1,72 @@
+{
+  "id": "viajesok",
+  "name": "ViajesOK",
+  "url": "https://viajesok.com",
+  "enabled": true,
+  "language": "es-CL",
+  "niche": "Guías de viaje prácticas: destinos, rutas, presupuesto y consejos",
+  "audience": "Viajeros hispanohablantes que planifican su próximo viaje",
+  "tone": "cercano, claro y bien documentado; tuteo; sin exageraciones",
+  "guidelines": [
+    "No inventar datos, cifras ni citas: todo dato verificable debe venir de una fuente enlazada"
+  ],
+  "frequency": {
+    "everyHours": 24,
+    "maxPostsPerRun": 1
+  },
+  "publishing": {
+    "status": "publish",
+    "minQualityScore": 7,
+    "author": null,
+    "defaultCategory": "Destinos",
+    "allowNewCategories": false
+  },
+  "content": {
+    "minWords": 900,
+    "maxWords": 1600,
+    "minSources": 3,
+    "includeFaq": true,
+    "includeSourcesSection": true,
+    "internalLinks": 3
+  },
+  "categories": [
+    "Destinos",
+    "Consejos"
+  ],
+  "topics": {
+    "pillars": [
+      "Destinos en Chile",
+      "Destinos en Sudamérica",
+      "Consejos de viaje",
+      "Presupuesto y ofertas"
+    ],
+    "seedTopics": [],
+    "avoid": []
+  },
+  "sources": {
+    "preferred": [
+      "chile.travel",
+      "sernatur.cl",
+      "conaf.cl"
+    ],
+    "blocked": []
+  },
+  "images": {
+    "featured": [
+      "internet",
+      "magnific",
+      "higgsfield"
+    ],
+    "inContent": 1,
+    "style": "fotografía editorial realista, luz natural, sin texto ni logos",
+    "aspectRatio": "16:9",
+    "internetProviders": [
+      "openverse",
+      "wikimedia",
+      "pexels"
+    ]
+  },
+  "seo": {
+    "plugin": "auto"
+  }
+}
