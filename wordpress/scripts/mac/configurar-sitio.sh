@@ -8,6 +8,8 @@ echo "Credenciales de WordPress para '$1'"
 echo "Crea una contraseña de aplicación en: WordPress > Usuarios > Perfil > Contraseñas de aplicación"
 read -rp "Usuario de WordPress: " WPUSER
 read -rsp "Contraseña de aplicación: " WPPASS; echo
-WPUSER="$WPUSER" WPPASS="$WPPASS" node -e 'process.stdout.write(JSON.stringify({user:process.env.WPUSER,appPassword:process.env.WPPASS}))' | node "$CLI" set-site "$1"
+# La contraseña se guarda en el Llavero de macOS, no en un archivo.
+security add-generic-password -U -s autoblog -a "$1" -w "$WPPASS"
+WPUSER="$WPUSER" node -e 'process.stdout.write(JSON.stringify({user:process.env.WPUSER,store:"keychain"}))' | node "$CLI" set-site "$1"
 echo; echo "Probando conexión..."
 node "$CLI" check "$1"

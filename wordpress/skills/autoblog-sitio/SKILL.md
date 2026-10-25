@@ -22,10 +22,16 @@ Cada sitio tiene un perfil JSON (sin contraseñas) con la misma forma que `sites
    - `topics.pillars` (4–8 temas principales), `topics.seedTopics` (10–20 ideas iniciales concretas) y `topics.avoid`.
    - `sources.preferred` (dominios fiables del nicho) y `sources.blocked`.
    - `images.featured` (orden de preferencia entre `internet`, `magnific`, `higgsfield`), `images.style`, `images.inContent`.
+   - `publishing.hours` (franja horaria local en que se publica, p. ej. `[8, 22]`) y `publishing.timezone` (p. ej. `America/Santiago`).
+   - `refresh` (actualizar artículos antiguos: `enabled`, `olderThanDays`, `everyHours`).
+   - `notify` (avisos por correo: `email` o vacío para el del administrador, `onPublish`, `onDraft`, `onFail`).
+   - `searchConsole.property`: `sc-domain:dominio.cl` (propiedad de dominio) o la URL exacta de la propiedad (`https://dominio.cl/`).
+   - `seo.minContentScore` (70 por defecto).
 4. Guarda con `site_save_profile(profile)`.
 5. Credenciales: **no las pidas en el chat**. Indica al usuario que ejecute en su equipo el script `configurar-sitio` (Windows: `scripts\windows\configurar-sitio.ps1 -Sitio <id>`; Mac: `scripts/mac/configurar-sitio.sh <id>`), que pide usuario y contraseña de aplicación de WordPress y las guarda en local. Explica cómo crear la contraseña de aplicación: WordPress → Usuarios → Perfil → "Contraseñas de aplicación".
-6. Cuando estén, `site_check(site)` y comenta el resultado (permisos, plugin SEO, si falta el plugin Autoblog Bridge).
-7. Opcional: añade temas a la cola con `topics_add`.
+6. Cuando estén, `site_check(site)` y comenta el resultado (permisos, plugin SEO, si falta el plugin Autoblog Bridge, acceso a Search Console).
+7. Si hay Search Console, `seo_opportunities(site)` y carga en la cola (`topics_add`) las mejores `newArticleIdeas`; si no, usa `seo_keyword_ideas` sobre los pilares.
+
 
 ## Ajustar un sitio
 

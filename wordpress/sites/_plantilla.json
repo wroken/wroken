@@ -10,13 +10,21 @@
   "guidelines": [
     "Reglas editoriales propias del sitio, una por línea"
   ],
-  "frequency": { "everyHours": 24, "maxPostsPerRun": 1 },
+  "frequency": {
+    "everyHours": 24,
+    "maxPostsPerRun": 1
+  },
   "publishing": {
     "status": "publish",
     "minQualityScore": 7,
     "author": null,
     "defaultCategory": "Noticias",
-    "allowNewCategories": false
+    "allowNewCategories": false,
+    "hours": [
+      8,
+      22
+    ],
+    "timezone": "America/Santiago"
   },
   "content": {
     "minWords": 900,
@@ -26,22 +34,58 @@
     "includeSourcesSection": true,
     "internalLinks": 3
   },
-  "categories": ["Noticias"],
+  "categories": [
+    "Noticias"
+  ],
   "topics": {
-    "pillars": ["Tema principal 1", "Tema principal 2"],
+    "pillars": [
+      "Tema principal 1",
+      "Tema principal 2"
+    ],
     "seedTopics": [],
-    "avoid": ["Temas que no se deben tocar"]
+    "avoid": [
+      "Temas que no se deben tocar"
+    ]
   },
   "sources": {
-    "preferred": ["dominio-confiable.cl"],
-    "blocked": ["dominio-poco-fiable.com"]
+    "preferred": [
+      "dominio-confiable.cl"
+    ],
+    "blocked": [
+      "dominio-poco-fiable.com"
+    ]
   },
   "images": {
-    "featured": ["internet", "magnific", "higgsfield"],
+    "featured": [
+      "internet",
+      "magnific",
+      "higgsfield"
+    ],
     "inContent": 1,
     "style": "fotografía editorial realista, luz natural, sin texto ni logos",
     "aspectRatio": "16:9",
-    "internetProviders": ["openverse", "wikimedia", "pexels"]
+    "internetProviders": [
+      "openverse",
+      "wikimedia",
+      "pexels"
+    ]
   },
-  "seo": { "plugin": "auto" }
+  "seo": {
+    "plugin": "auto",
+    "minContentScore": 70
+  },
+  "refresh": {
+    "enabled": true,
+    "olderThanDays": 270,
+    "everyHours": 168
+  },
+  "notify": {
+    "email": null,
+    "onPublish": false,
+    "onDraft": true,
+    "onFail": true
+  },
+  "searchConsole": {
+    "property": "sc-domain:misitio.com"
+  }
 }

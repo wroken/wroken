@@ -113,7 +113,7 @@ const MULT = { mil: 1e3, k: 1e3, millon: 1e6, millones: 1e6, mill: 1e6, m: 1e6, 
 const NUM_RE = /(\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(\s?%|\s?por ciento|\s?(?:mil|millones|millón|millon|mill|million|millions|billion|thousand|k|m)\b)?/gi;
 
 function stripAccents(s) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 // Un mismo texto ("1.500" o "1,5") puede leerse con convención española o inglesa:
@@ -158,11 +158,16 @@ function normText(s) {
     .trim();
 }
 
-async function sourceTexts(urls) {
+// Acepta URLs o {url, excerpt}. El extracto es el texto que Claude ya leyó de la fuente:
+// sirve cuando la web bloquea las descargas automáticas (Cloudflare, muros de pago).
+async function sourceTexts(sources) {
   const texts = [];
   const missing = [];
   await Promise.all(
-    urls.map(async (u) => {
+    sources.map(async (src) => {
+      const u = typeof src === "string" ? src : src.url;
+      const parts = [];
+      if (typeof src === "object" && src.excerpt) parts.push(src.excerpt);
       let t = sourceTextCache.get(u);
       if (!t) {
         try {
@@ -172,7 +177,8 @@ async function sourceTexts(urls) {
           /* fuente no legible */
         }
       }
-      if (t) texts.push(t);
+      if (t) parts.push(t);
+      if (parts.length) texts.push(parts.join("\n"));
       else missing.push(u);
     })
   );
@@ -181,13 +187,17 @@ async function sourceTexts(urls) {
 
 // Comprueba que cada cifra y cada cita textual del artículo aparece en alguna fuente.
 // Se ignoran años sueltos y números pequeños sin unidad (listas, "3 consejos").
-export async function verifyAgainstSources(html, sourceUrls) {
+// Si no se pudo leer ninguna fuente, no se bloquea: se devuelve skipped = true.
+export async function verifyAgainstSources(html, sources) {
   const text = htmlToText(
     String(html)
       .replace(/<h2[^>]*>\s*(fuentes|referencias|sources)\s*<\/h2>[\s\S]*$/i, "") // sección de fuentes
       .replace(/<(figcaption)[\s\S]*?<\/\1>/gi, " ")
   );
-  const { texts, missing } = await sourceTexts(sourceUrls);
+  const { texts, missing } = await sourceTexts(sources);
+  if (!texts.length) {
+    return { skipped: true, sourcesRead: 0, sourcesUnreadable: missing, unsupportedNumbers: [], unsupportedQuotes: [] };
+  }
   const srcNumbers = texts.flatMap((t) => numbersIn(t)).flatMap((n) => n.values);
   const unsupportedNumbers = [];
   for (const n of numbersIn(text)) {
@@ -205,7 +215,40 @@ export async function verifyAgainstSources(html, sourceUrls) {
     if (q.split(" ").length < 6) continue;
     if (!srcNorm.some((s) => s.includes(q))) unsupportedQuotes.push(m[1].trim());
   }
-  return { sourcesRead: texts.length, sourcesUnreadable: missing, unsupportedNumbers, unsupportedQuotes };
+  return { skipped: false, sourcesRead: texts.length, sourcesUnreadable: missing, unsupportedNumbers, unsupportedQuotes };
+}
+
+// ---------- Similitud de temas ----------
+
+const STOP = new Set(
+  ("a al ante con contra de del desde el en entre es la las lo los para por que se sin sobre su sus tu un una unos unas y o u " +
+    "como cual cuales cuando donde mas muy mejor mejores guia completa todo todos lo-que hay ser son esta este estos estas " +
+    "the a an of to in on for and or with your you how what why best guide").split(/\s+/)
+);
+
+function tokens(s) {
+  return new Set(
+    normText(s)
+      .split(" ")
+      .filter((w) => w.length > 2 && !STOP.has(w) && !/^\d{4}$/.test(w))
+      .map((w) => w.replace(/(es|s)$/, ""))
+  );
+}
+
+export function similarity(a, b) {
+  const A = tokens(a);
+  const B = tokens(b);
+  if (!A.size || !B.size) return 0;
+  let inter = 0;
+  for (const t of A) if (B.has(t)) inter++;
+  return inter / Math.min(A.size, B.size);
+}
+
+export function similarTitles(title, titles, threshold = 0.6) {
+  return titles
+    .map((t) => ({ title: t.title ?? t, link: t.link, score: Math.round(similarity(title, t.title ?? t) * 100) / 100 }))
+    .filter((x) => x.score >= threshold)
+    .sort((a, b) => b.score - a.score);
 }
 
 // Comprobaciones básicas del título (inspiradas en Draft2Publish).

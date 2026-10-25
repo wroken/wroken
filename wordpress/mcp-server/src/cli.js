@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { autoblogHome, getCredentials, getSite, loadSites } from "./config.js";
 import { checkSite } from "./wordpress.js";
 
-const KEYS = ["TAVILY_API_KEY", "BRAVE_API_KEY", "PEXELS_API_KEY"];
+const KEYS = ["TAVILY_API_KEY", "BRAVE_API_KEY", "PEXELS_API_KEY", "GOOGLE_SERVICE_ACCOUNT_JSON"];
 
 async function stdin() {
   const chunks = [];
@@ -37,10 +37,15 @@ const [cmd, arg] = process.argv.slice(2);
 try {
   if (cmd === "set-site") {
     getSite(arg);
-    const { user, appPassword } = JSON.parse(await stdin());
-    if (!user || !appPassword) throw new Error("Faltan usuario o contraseña");
-    const file = updateCredentials((d) => (d[arg] = { user, appPassword: appPassword.trim() }));
-    console.log(`Credenciales de "${arg}" guardadas en ${file}`);
+    const { user, appPassword, appPasswordDpapi, store } = JSON.parse(await stdin());
+    if (!user || !(appPassword || appPasswordDpapi || store === "keychain")) throw new Error("Faltan usuario o contraseña");
+    let entry;
+    if (appPasswordDpapi) entry = { user, store: "dpapi", appPasswordDpapi };
+    else if (store === "keychain") entry = { user, store: "keychain" };
+    else entry = { user, appPassword: appPassword.trim() };
+    const file = updateCredentials((d) => (d[arg] = entry));
+    const where = entry.store === "dpapi" ? " (cifrada con tu usuario de Windows)" : entry.store === "keychain" ? " (contraseña en el Llavero)" : "";
+    console.log(`Credenciales de "${arg}" guardadas en ${file}${where}`);
   } else if (cmd === "set-key") {
     if (!KEYS.includes(arg)) throw new Error(`Clave desconocida. Válidas: ${KEYS.join(", ")}`);
     const value = await stdin();
@@ -54,7 +59,7 @@ try {
     const r = await checkSite(getSite(arg));
     console.log(JSON.stringify(r, null, 2));
     if (!r.canPublish || !r.canUpload) console.log("AVISO: el usuario necesita rol Autor, Editor o Administrador.");
-    if (!r.bridgeInstalled) console.log("AVISO: instala el plugin Autoblog Bridge para escribir el SEO (título y meta descripción).");
+    if (!r.bridgeInstalled) console.log("AVISO: instala el plugin Autoblog Bridge (SEO, bloqueo compartido, avisos y WebP).");
   } else if (cmd === "install-desktop") {
     // Registra el servidor en claude_desktop_config.json (con copia de seguridad).
     const file = arg;

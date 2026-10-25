@@ -2,23 +2,34 @@
   "manifest_version": "0.3",
   "name": "autoblog",
   "display_name": "Autoblog WordPress",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Investiga, redacta, ilustra y publica artículos en tus sitios WordPress desde Claude.",
-  "long_description": "Herramientas para publicar artículos con fuentes verificadas en varios sitios WordPress: perfiles por sitio, cola de temas, búsqueda y lectura de fuentes, verificación de cifras y citas, fotos con licencia (Openverse, Wikimedia, Pexels), subida de imágenes generadas con Higgsfield o Magnific, SEO para Rank Math o Yoast y bloqueo para no publicar dos veces.",
-  "author": { "name": "Wroken", "url": "https://wroken.com" },
+  "long_description": "Herramientas para publicar artículos con fuentes verificadas en varios sitios WordPress: perfiles por sitio, cola de temas, búsqueda y lectura de fuentes, verificación de cifras y citas, fotos con licencia (Openverse, Wikimedia, Pexels), subida de imágenes generadas con Higgsfield o Magnific, SEO para Rank Math o Yoast y bloqueo para no publicar dos veces. Incluye SEO con datos reales: Search Console, autocompletado de Google, análisis de los primeros resultados y puntuación SEO.",
+  "author": {
+    "name": "Wroken",
+    "url": "https://wroken.com"
+  },
   "license": "MIT",
-  "keywords": ["wordpress", "blog", "seo", "autoblog"],
+  "keywords": [
+    "wordpress",
+    "blog",
+    "seo",
+    "autoblog"
+  ],
   "server": {
     "type": "node",
     "entry_point": "server/src/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server/src/index.js"],
+      "args": [
+        "${__dirname}/server/src/index.js"
+      ],
       "env": {
         "AUTOBLOG_SITES_DIR": "${user_config.sites_dir}",
         "TAVILY_API_KEY": "${user_config.tavily_api_key}",
         "BRAVE_API_KEY": "${user_config.brave_api_key}",
-        "PEXELS_API_KEY": "${user_config.pexels_api_key}"
+        "PEXELS_API_KEY": "${user_config.pexels_api_key}",
+        "GOOGLE_SERVICE_ACCOUNT_JSON": "${user_config.google_service_account}"
       }
     }
   },
@@ -49,10 +60,21 @@
       "description": "Fotos gratuitas de Pexels además de Openverse y Wikimedia.",
       "sensitive": true,
       "required": false
+    },
+    "google_service_account": {
+      "type": "file",
+      "title": "Search Console: archivo JSON de la cuenta de servicio (opcional)",
+      "description": "Permite elegir temas con datos reales de Google Search Console (ver README).",
+      "required": false
     }
   },
   "compatibility": {
-    "platforms": ["win32", "darwin"],
-    "runtimes": { "node": ">=20.0.0" }
+    "platforms": [
+      "win32",
+      "darwin"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
   }
 }

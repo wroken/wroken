@@ -18,7 +18,7 @@ let wpServer;
 let client;
 let tmp;
 let base;
-const state = { posts: [], media: [], tags: [{ id: 50, name: "Chile", slug: "chile" }], categories: [{ id: 1, name: "Viajes", slug: "viajes" }] };
+const state = { posts: [], media: [], lock: null, kv: {}, mails: [], tags: [{ id: 50, name: "Chile", slug: "chile" }], categories: [{ id: 1, name: "Viajes", slug: "viajes" }] };
 
 function startFakeWordPress() {
   return new Promise((resolve) => {
@@ -44,6 +44,28 @@ function startFakeWordPress() {
       const expected = "Basic " + Buffer.from(`${USER}:${PASS}`).toString("base64");
       if (req.headers.authorization !== expected) return send(401, { message: "No autorizado" });
 
+      if (route === "autoblog/v1/lock") {
+        if (req.method === "POST") {
+          const { run_id } = JSON.parse(raw);
+          if (state.lock) return send(200, { ok: false, held_by: state.lock, expires: Math.floor(Date.now() / 1000) + 600 });
+          state.lock = run_id;
+          return send(200, { ok: true, run_id });
+        }
+        if (state.lock === url.searchParams.get("run_id")) state.lock = null;
+        return send(200, { ok: true });
+      }
+      const kv = route.match(/^autoblog\/v1\/state\/(.+)$/);
+      if (kv) {
+        if (req.method === "POST") {
+          state.kv[kv[1]] = JSON.parse(raw).value;
+          return send(200, { ok: true });
+        }
+        return send(200, { key: kv[1], value: state.kv[kv[1]] ?? null });
+      }
+      if (route === "autoblog/v1/notify") {
+        state.mails.push(JSON.parse(raw));
+        return send(200, { ok: true, to: "admin@example.com" });
+      }
       if (route === "wp/v2/users/me") return send(200, { id: 7, username: USER, capabilities: { publish_posts: true, upload_files: true } });
       if (route === "wp/v2/categories" || route === "wp/v2/tags") {
         const tax = route.split("/")[2];
@@ -98,7 +120,15 @@ before(async () => {
   fs.mkdirSync(path.join(tmp, "sites"));
   fs.writeFileSync(
     path.join(tmp, "sites", "prueba.json"),
-    JSON.stringify({ name: "Prueba", url: wpUrl + "/", content: { minSources: 1 }, topics: { seedTopics: ["Qué ver en Valparaíso"] } })
+    JSON.stringify({
+      name: "Prueba",
+      niche: "Viajes por Chile",
+      url: wpUrl + "/",
+      content: { minSources: 1 },
+      publishing: { hours: [0, 24] },
+      notify: { onDraft: true },
+      topics: { seedTopics: ["Qué ver en Valparaíso"] },
+    })
   );
   client = new Client({ name: "test", version: "1.0.0" });
   await client.connect(
@@ -211,7 +241,7 @@ test("flujo completo de publicación con salvaguardas", async () => {
   assert.equal(invented.unsupportedNumbers.length, 3);
   assert.equal(invented.unsupportedQuotes.length, 1);
 
-  const v = await call("content_verify", { content: `<p>Son 1.250 visitantes y 31.337 socios. <a href="${base}/fuente/blanda">más</a></p>`, source_urls: [`${base}/fuente/a`], title: "Museo" });
+  const v = await call("content_verify", { content: `<p>Son 1.250 visitantes y 31.337 socios. <a href="${base}/fuente/blanda">más</a></p>`, sources: [`${base}/fuente/a`], title: "Museo" });
   assert.deepEqual(v.unsupportedNumbers.map((n) => n.number), ["31.337"]);
   assert.ok(v.titleIssues.length > 0);
   assert.deepEqual(v.brokenLinks, [`${base}/fuente/blanda`], "detecta páginas 404 que responden 200");
@@ -222,6 +252,79 @@ test("flujo completo de publicación con salvaguardas", async () => {
   const again = await call("run_begin", { site: "prueba" });
   assert.equal(again.started, true, "el bloqueo debe liberarse al terminar");
   await call("run_end", { site: "prueba", run_id: again.runId, outcome: "skipped" });
+});
+
+test("los borradores cuentan para la frecuencia (no reintenta cada 2 horas)", async () => {
+  const due = await call("sites_due");
+  assert.deepEqual(due.due, [], JSON.stringify(due.sites));
+  assert.ok(due.sites[0].last.status, "debe informar el estado del último artículo");
+});
+
+test("bloqueo compartido en WordPress (PC y nube)", async () => {
+  state.lock = "ejecucion-en-la-nube";
+  const r = await call("run_begin", { site: "prueba" });
+  assert.equal(r.started, false);
+  assert.equal(r.lock.scope, "wordpress");
+  state.lock = null;
+  const r2 = await call("run_begin", { site: "prueba" });
+  assert.equal(r2.started, true);
+  assert.equal(r2.site.lockScope, "wordpress");
+  await call("run_end", { site: "prueba", run_id: r2.runId, outcome: "draft", topic: "Tema de prueba", notes: "borrador" });
+  assert.equal(state.lock, null, "libera el bloqueo remoto");
+  assert.ok(state.kv.topics.used.some((t) => t.topic === "Tema de prueba"), "la cola se guarda en WordPress");
+  assert.ok(state.kv.runs.length >= 1, "el historial se guarda en WordPress");
+  assert.equal(state.mails.length, 1, "avisa por correo de los borradores (notify.onDraft)");
+});
+
+test("temas parecidos y enlaces relacionados", async () => {
+  const sim = await call("topics_check_similar", { site: "prueba", topic: "Un día en Valparaíso" });
+  assert.equal(sim.verdict, "muy_parecido");
+  const nuevo = await call("topics_check_similar", { site: "prueba", topic: "Mejores termas del sur de Chile" });
+  assert.equal(nuevo.verdict, "nuevo");
+  const rel = await call("wp_find_related", { site: "prueba", keywords: ["Valparaíso", "museo"] });
+  assert.ok(rel.length >= 2);
+  const casi = await call("wp_create_post", {
+    site: "prueba",
+    title: "Valparaíso en un día completo",
+    content: "<p>x</p>",
+    sources: [{ title: "a", url: `${base}/fuente/a` }],
+    quality_score: 9,
+  });
+  assert.equal(casi.status, "draft", "un artículo casi igual a uno publicado no se publica");
+});
+
+test("verificación con extractos cuando la fuente bloquea descargas", async () => {
+  const v = await call("content_verify", {
+    content: "<p>Llegaron 4.321 turistas y 8.765 cruceristas.</p>",
+    sources: [{ title: "Bloqueada", url: `${base}/fuente/404`, excerpt: "En total llegaron 4.321 turistas al puerto." }],
+  });
+  assert.equal(v.sourcesRead, 1);
+  assert.deepEqual(v.unsupportedNumbers.map((n) => n.number), ["8.765"]);
+  const none = await call("content_verify", { content: "<p>Son 5.555 personas.</p>", sources: [`${base}/fuente/404`] });
+  assert.equal(none.skipped, true, "si no se puede leer ninguna fuente no se bloquea");
+});
+
+test("puntuación SEO del contenido", async () => {
+  const good = await call("seo_content_score", {
+    keyword: "qué ver en valparaíso",
+    title: "Qué ver en Valparaíso: 12 lugares imperdibles",
+    seo_title: "Qué ver en Valparaíso: 12 lugares imperdibles",
+    meta_description: "Qué ver en Valparaíso en uno o dos días: cerros, ascensores, miradores y museos, con horarios y precios actualizados para planificar tu visita.",
+    slug: "que-ver-en-valparaiso",
+    content:
+      "<p>Si buscas qué ver en Valparaíso, empieza por sus cerros y ascensores históricos.</p>" +
+      ["Cerro Alegre", "Ascensores", "Miradores", "Qué ver en Valparaíso de noche", "Preguntas frecuentes"]
+        .map((h) => `<h2>${h}</h2><p>Texto breve sobre ${h} con <a href="https://a.cl">fuente</a> y <a href="https://b.cl">otra</a>.</p>`)
+        .join("") +
+      '<figure><img src="x.jpg" alt="Casas de colores en el cerro Alegre"/></figure>',
+    terms: [{ term: "cerro alegre" }, { term: "ascensores" }, { term: "funicular" }],
+    recommended_words: 80,
+  });
+  assert.ok(good.score >= 70, JSON.stringify(good));
+  assert.deepEqual(good.missingTerms, ["funicular"]);
+  const bad = await call("seo_content_score", { keyword: "termas de chillán", title: "Un viaje al sur", content: "<p>Hola.</p>" });
+  assert.ok(bad.score < 40);
+  assert.ok(bad.fixes.length > 3);
 });
 
 test("credenciales incorrectas dan un error claro", async () => {

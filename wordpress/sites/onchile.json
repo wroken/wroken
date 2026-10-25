@@ -19,7 +19,12 @@
     "minQualityScore": 7,
     "author": null,
     "defaultCategory": "Actualidad",
-    "allowNewCategories": false
+    "allowNewCategories": false,
+    "hours": [
+      7,
+      22
+    ],
+    "timezone": "America/Santiago"
   },
   "content": {
     "minWords": 900,
@@ -65,6 +70,21 @@
     ]
   },
   "seo": {
-    "plugin": "auto"
+    "plugin": "auto",
+    "minContentScore": 70
+  },
+  "refresh": {
+    "enabled": true,
+    "olderThanDays": 270,
+    "everyHours": 168
+  },
+  "notify": {
+    "email": null,
+    "onPublish": false,
+    "onDraft": true,
+    "onFail": true
+  },
+  "searchConsole": {
+    "property": "sc-domain:onchile.com"
   }
 }

@@ -133,3 +133,80 @@ test("research_search con Tavily", async () => {
   assert.equal(r.provider, "tavily");
   assert.deepEqual(r.results.map((x) => x.url), ["https://ok.cl/a"]);
 });
+
+test("seo_keyword_ideas usa el autocompletado de Google y clasifica la intención", async () => {
+  const { keywordIdeas } = await import("../src/seo.js");
+  globalThis.fetch = async (url) => {
+    const q = new URL(String(url)).searchParams.get("q");
+    const map = {
+      "termas de chillan": ["termas de chillan precios", "termas de chillan hotel"],
+      "cómo termas de chillan": ["como llegar a termas de chillan"],
+      "mejores termas de chillan": ["mejores termas de chillan vs puyehue"],
+    };
+    return new Response(JSON.stringify([q, map[q] || []]), { headers: { "content-type": "application/json" } });
+  };
+  const r = await keywordIdeas("termas de chillan", { language: "es-CL" });
+  const kws = r.ideas.map((i) => i.keyword);
+  assert.ok(kws.includes("como llegar a termas de chillan"));
+  assert.equal(r.ideas.find((i) => i.keyword === "termas de chillan precios").intent, "transaccional");
+  assert.equal(r.ideas.find((i) => i.keyword.includes("vs")).intent, "comparativa");
+  assert.ok(r.questions.some((q) => q.keyword.startsWith("como")));
+});
+
+test("Search Console con cuenta de servicio: firma JWT y oportunidades", async () => {
+  const crypto = await import("node:crypto");
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
+    client_email: "autoblog@proyecto.iam.gserviceaccount.com",
+    private_key: privateKey.export({ type: "pkcs8", format: "pem" }),
+    token_uri: "https://oauth2.test/token",
+  });
+  process.env.AUTOBLOG_GOOGLE_API_BASE = "https://gsc.test";
+  let verified = false;
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u.startsWith("https://oauth2.test/token")) {
+      const jwt = new URLSearchParams(opts.body).get("assertion");
+      const [h, c, sig] = jwt.split(".");
+      verified = crypto.verify("RSA-SHA256", Buffer.from(`${h}.${c}`), publicKey, Buffer.from(sig, "base64url"));
+      const claim = JSON.parse(Buffer.from(c, "base64url"));
+      assert.equal(claim.scope, "https://www.googleapis.com/auth/webmasters.readonly");
+      return new Response(JSON.stringify({ access_token: "tok", expires_in: 3600 }));
+    }
+    assert.match(u, /gsc\.test\/webmasters\/v3\/sites\/sc-domain%3Aviajesok\.com\/searchAnalytics\/query/);
+    assert.equal(opts.headers.Authorization, "Bearer tok");
+    return new Response(
+      JSON.stringify({
+        rows: [
+          { keys: ["que ver en valparaiso", "https://viajesok.com/valparaiso/"], clicks: 20, impressions: 900, ctr: 0.022, position: 7.4 },
+          { keys: ["termas en chile", "https://viajesok.com/sur/"], clicks: 1, impressions: 400, ctr: 0.0025, position: 34 },
+          { keys: ["mapa de santiago", "https://viajesok.com/santiago/"], clicks: 3, impressions: 500, ctr: 0.006, position: 2.1 },
+        ],
+      })
+    );
+  };
+  const { opportunities } = await import("../src/seo.js");
+  const r = await opportunities({ id: "viajesok", url: "https://viajesok.com" }, { minImpressions: 10 });
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  delete process.env.AUTOBLOG_GOOGLE_API_BASE;
+  assert.equal(verified, true, "la firma JWT debe ser válida");
+  assert.deepEqual(r.newArticleIdeas.map((x) => x.query), ["termas en chile"]);
+  assert.deepEqual(r.improveExisting.map((x) => x.query), ["que ver en valparaiso"]);
+  assert.deepEqual(r.improveTitles.map((x) => x.query), ["mapa de santiago"]);
+});
+
+test("seo_serp_analysis extrae longitud, encabezados, términos y preguntas", async () => {
+  const { serpAnalysis } = await import("../src/seo.js");
+  const page = (h2s, extra) =>
+    `<html><head><title>T</title></head><body><article>${h2s.map((h) => `<h2>${h}</h2><p>El funicular del cerro alegre y los ascensores históricos de Valparaíso. ${extra}</p>`).join("")}</article></body></html>`;
+  mockFetch({
+    "a.test": { type: "text/html", body: page(["Cerro Alegre", "¿Cuánto cuesta el ascensor?"], "Museo a cielo abierto.") },
+    "b.test": { type: "text/html", body: page(["Ascensores", "Dónde comer"], "Muelle Prat y paseo.") },
+    "c.test": { type: "text/html", body: page(["Miradores"], "Cerro alegre de noche.") },
+  });
+  const r = await serpAnalysis("qué ver en valparaíso", { urls: ["https://a.test/1", "https://b.test/2", "https://c.test/3"] });
+  assert.equal(r.analyzed, 3);
+  assert.ok(r.wordCount.median > 0);
+  assert.ok(r.terms.some((t) => t.term === "cerro alegre" && t.docs === 3));
+  assert.ok(r.questions.includes("¿Cuánto cuesta el ascensor?"));
+});

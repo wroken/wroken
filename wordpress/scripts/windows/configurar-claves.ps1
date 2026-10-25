@@ -8,6 +8,7 @@ $claves = [ordered]@{
     TAVILY_API_KEY = 'Tavily (https://tavily.com, plan gratuito)'
     BRAVE_API_KEY  = 'Brave Search API (https://brave.com/search/api)'
     PEXELS_API_KEY = 'Pexels (https://www.pexels.com/api, gratis)'
+    GOOGLE_SERVICE_ACCOUNT_JSON = 'Search Console: ruta al archivo .json de la cuenta de servicio (ver README)'
 }
 foreach ($k in $claves.Keys) {
     $v = Read-Host "$($claves[$k])"

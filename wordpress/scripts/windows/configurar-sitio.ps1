@@ -10,9 +10,10 @@ Write-Host "Credenciales de WordPress para '$Sitio'"
 Write-Host 'Crea una contraseña de aplicación en: WordPress > Usuarios > Perfil > Contraseñas de aplicación'
 $user = Read-Host 'Usuario de WordPress'
 $sec  = Read-Host 'Contraseña de aplicación' -AsSecureString
-$pass = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
+# Se guarda cifrada con DPAPI: solo tu usuario de Windows en este equipo puede descifrarla.
+$enc  = ConvertFrom-SecureString $sec
 
-@{ user = $user; appPassword = $pass } | ConvertTo-Json -Compress | node $Cli set-site $Sitio
+@{ user = $user; store = 'dpapi'; appPasswordDpapi = $enc } | ConvertTo-Json -Compress | node $Cli set-site $Sitio
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host "`nProbando conexión..."

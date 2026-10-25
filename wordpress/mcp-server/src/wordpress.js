@@ -120,7 +120,7 @@ export async function listTerms(site, taxonomy = "categories") {
 }
 
 function norm(s) {
-  return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
 // Convierte nombres en IDs. Las etiquetas se crean si no existen; las categorías solo si
@@ -193,6 +193,8 @@ export async function uploadMedia(site, { buffer, contentType, filename, altText
   return {
     id: media.id,
     url: media.source_url,
+    width: media.media_details?.width || null,
+    height: media.media_details?.height || null,
     sizes: Object.fromEntries(Object.entries(media.media_details?.sizes || {}).map(([k, v]) => [k, v.source_url])),
   };
 }
@@ -224,6 +226,7 @@ async function buildPostPayload(site, input) {
     }
     if (input.sources?.length) meta._autoblog_sources = JSON.stringify(input.sources);
     if (input.quality_score !== undefined) meta._autoblog_quality = String(input.quality_score);
+    if (input.refreshed) meta._autoblog_refreshed_at = new Date().toISOString();
     if (Object.keys(meta).length) payload.meta = meta;
   } else if (input.seo && info.seoPlugin !== "none") {
     warnings.push(
@@ -247,12 +250,103 @@ export async function updatePost(site, postId, input) {
   return { id: data.id, status: data.status, link: data.link, warnings };
 }
 
-export async function lastPostByMe(site) {
+// Último artículo del usuario de Autoblog, incluidos borradores y pendientes:
+// así un artículo que quedó en borrador también cuenta para la frecuencia.
+export async function lastActivityByMe(site) {
   const meId = (await me(site)).id;
   const { data } = await wp(site, "wp/v2/posts", {
-    query: { author: meId, per_page: 1, orderby: "date", order: "desc", status: "publish,future", _fields: "id,date_gmt,link,title" },
+    query: {
+      author: meId,
+      per_page: 1,
+      orderby: "date",
+      order: "desc",
+      status: "publish,future,draft,pending",
+      _fields: "id,date_gmt,modified_gmt,link,title,status",
+    },
   });
-  return data[0] || null;
+  const p = data[0];
+  if (!p) return null;
+  return { id: p.id, date_gmt: p.date_gmt || p.modified_gmt, link: p.link, status: p.status };
+}
+
+// Artículos relacionados (para enlazado interno): busca cada palabra clave en todo el sitio
+// y ordena por cuántas palabras clave coinciden.
+export async function findRelated(site, keywords, { count = 10, excludeIds = [] } = {}) {
+  const hits = new Map();
+  await Promise.all(
+    keywords.slice(0, 8).map(async (kw) => {
+      const { data } = await wp(site, "wp/v2/posts", {
+        query: { search: kw, per_page: 10, _fields: "id,date,link,title,excerpt" },
+      });
+      for (const p of data) {
+        if (excludeIds.includes(p.id)) continue;
+        const h = hits.get(p.id) || {
+          id: p.id,
+          title: decodeEntities(p.title?.rendered || ""),
+          link: p.link,
+          date: p.date,
+          excerpt: decodeEntities((p.excerpt?.rendered || "").replace(/<[^>]+>/g, "")).trim().slice(0, 200),
+          matched: [],
+        };
+        h.matched.push(kw);
+        hits.set(p.id, h);
+      }
+    })
+  );
+  return [...hits.values()].sort((a, b) => b.matched.length - a.matched.length).slice(0, count);
+}
+
+// Artículos publicados que no se actualizan hace más de N días (candidatos a refrescar).
+export async function stalePosts(site, { olderThanDays = 270, count = 10 } = {}) {
+  const before = new Date(Date.now() - olderThanDays * 864e5).toISOString().slice(0, 19);
+  const { data } = await wp(site, "wp/v2/posts", {
+    query: { modified_before: before, orderby: "modified", order: "asc", per_page: Math.min(count, 100), status: "publish", _fields: "id,date,modified,link,title" },
+  });
+  return data.map((p) => ({ id: p.id, title: decodeEntities(p.title?.rendered || ""), link: p.link, published: p.date, modified: p.modified }));
+}
+
+export async function getPost(site, postId) {
+  const { data } = await wp(site, `wp/v2/posts/${postId}`, { query: { context: "edit" } });
+  return {
+    id: data.id,
+    status: data.status,
+    link: data.link,
+    title: data.title?.raw,
+    content: data.content?.raw,
+    excerpt: data.excerpt?.raw,
+    date: data.date,
+    modified: data.modified,
+    categories: data.categories,
+    tags: data.tags,
+    featured_media: data.featured_media,
+    meta: data.meta,
+  };
+}
+
+// ---------- Funciones del plugin Autoblog Bridge ----------
+
+export async function remoteLock(site, runId, ttlSeconds = 7200) {
+  const { data } = await wp(site, "autoblog/v1/lock", { method: "POST", json: { run_id: runId, ttl: ttlSeconds } });
+  return data;
+}
+
+export async function remoteUnlock(site, runId) {
+  const { data } = await wp(site, "autoblog/v1/lock", { method: "DELETE", query: { run_id: runId } });
+  return data;
+}
+
+export async function remoteState(site, key) {
+  const { data } = await wp(site, `autoblog/v1/state/${key}`);
+  return data?.value ?? null;
+}
+
+export async function remoteStateSet(site, key, value) {
+  await wp(site, `autoblog/v1/state/${key}`, { method: "POST", json: { value } });
+}
+
+export async function notify(site, { to, subject, body }) {
+  const { data } = await wp(site, "autoblog/v1/notify", { method: "POST", json: { to, subject, body } });
+  return data;
 }
 
 const NAMED = {

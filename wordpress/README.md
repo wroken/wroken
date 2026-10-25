@@ -38,6 +38,11 @@ Revisé los plugins y proyectos similares (AutoPost AI, Draft2Publish, AI Conten
 - **Imágenes con licencia**: fotos de internet solo con licencia de uso comercial (Openverse, Wikimedia Commons, Pexels) y atribución automática en el pie; o generadas con Magnific/Higgsfield usando tus créditos.
 - **Puerta de calidad**: autoevaluación con rúbrica; si no llega al mínimo del perfil, se guarda como borrador.
 - **Sin duplicados**: rechaza títulos ya publicados, recuerda los temas usados y bloquea el sitio mientras se publica.
+- **SEO con datos reales** (inspirado en SEOWriting.ai y Surfer): elige temas con Search Console y el autocompletado de Google, analiza los primeros resultados para la palabra clave (longitud, subtemas, términos, preguntas) y puntúa el SEO del borrador de 0 a 100 antes de publicar.
+- **Actualiza artículos antiguos** con datos nuevos, sin cambiar la URL (suele subir posiciones más rápido que publicar uno nuevo).
+- **Enlazado interno** buscando en todo el sitio, no solo en lo reciente, y detección de temas parecidos a lo ya publicado.
+- **PC y nube a la vez sin choques**: bloqueo, cola de temas e historial guardados en el propio WordPress (con el plugin Bridge).
+- **Franja horaria por sitio**, avisos por correo (borradores y fallos), imágenes en WebP y contraseñas cifradas (DPAPI en Windows, Llavero en Mac).
 - **Usa Claude** (no una API de pago extra) y tus conectores de Magnific y Higgsfield.
 
 ---
@@ -76,8 +81,13 @@ Hazlo una vez por sitio:
 
 1. **Crea un usuario para Autoblog** (por ejemplo `autoblog`) con rol **Autor** o **Editor**. Así sabes qué publicó el sistema, y el sistema calcula la frecuencia por la fecha de los artículos de ese usuario.
 2. Con ese usuario: **Usuarios → Perfil → Contraseñas de aplicación**, escribe "Autoblog" y pulsa *Añadir*. Copia la contraseña (formato `abcd efgh ijkl mnop qrst uvwx`).
-3. Ejecuta `configurar-sitio` (arriba) con el id del sitio. Pide el usuario y la contraseña, los guarda solo en tu equipo (`%USERPROFILE%\.autoblog\credentials.json` o `~/.autoblog/credentials.json`) y prueba la conexión.
-4. **Instala el plugin Autoblog Bridge**: comprime la carpeta `wp-plugin/autoblog-bridge` en un `.zip` y súbelo en **Plugins → Añadir nuevo → Subir plugin**, o cópiala por FTP/SSH a `wp-content/plugins/` y actívalo. Sin él se publica igual, pero sin título SEO ni meta descripción.
+3. Ejecuta `configurar-sitio` (arriba) con el id del sitio. Pide el usuario y la contraseña, la guarda **cifrada** solo en tu equipo (Windows: cifrado DPAPI de tu usuario en `%USERPROFILE%\.autoblog\credentials.json`; Mac: en el Llavero) y prueba la conexión.
+4. **Instala el plugin Autoblog Bridge** (muy recomendado): comprime la carpeta `wp-plugin/autoblog-bridge` en un `.zip` y súbelo en **Plugins → Añadir nuevo → Subir plugin**, o cópiala por SSH a `wp-content/plugins/` y actívalo. Aporta:
+   - título SEO, meta descripción y palabra clave de **Rank Math o Yoast**;
+   - **bloqueo compartido**, cola de temas e historial guardados en WordPress (el PC y la nube no publican a la vez y comparten la cola);
+   - **avisos por correo** con el correo de WordPress (configura SMTP si tu servidor no envía correo);
+   - tamaños de imagen en **WebP**;
+   - un recuadro en el editor con las fuentes y la puntuación de cada artículo.
 
 ### Error 401 aunque la contraseña sea correcta
 Algunos servidores Apache/CGI no pasan la cabecera de autenticación. Añade al principio del `.htaccess` del sitio:
@@ -107,7 +117,31 @@ Cada sitio es un archivo en `sites/` (copia `_plantilla.json`). Lo más importan
 
 **Añadir un sitio nuevo**: dile a Claude *"Añade el sitio misitio.cl al autoblog"* (usa la skill `autoblog-sitio`) y luego ejecuta `configurar-sitio` con su id.
 
-## 5. Uso dentro de una conversación
+## 5. SEO: cómo elige temas y por qué puede posicionar
+
+**Qué hace el sistema** (lo que depende del contenido):
+1. **Tema con demanda real**: busca en Search Console las búsquedas donde tu sitio ya aparece pero muy abajo (`seo_opportunities`) y usa el autocompletado de Google sobre tus pilares (`seo_keyword_ideas`). Prefiere frases concretas con intención clara (menos competencia).
+2. **Analiza a quién hay que ganarle**: lee los primeros resultados de Google para la palabra clave (`seo_serp_analysis`): longitud, subtemas, términos que usan todos y preguntas de la gente.
+3. **Escribe para superar** esos resultados: cubre los subtemas, añade lo que no tienen (datos actuales con fuente, consejos prácticos, tablas), FAQ con preguntas reales, enlaces internos y fuentes.
+4. **Puntúa el SEO** del borrador (`seo_content_score`, 0–100) y corrige hasta el objetivo del perfil (`seo.minContentScore`, 70).
+5. **SEO técnico en página**: título y meta con la palabra clave, slug limpio, alt de imágenes, imagen ≥ 1200 px, WebP, Rank Math/Yoast.
+6. **Actualiza** periódicamente los artículos que están entre el puesto 4 y el 20 o que llevan meses sin tocarse.
+
+**Lo que no depende del sistema** (y nadie puede garantizar): la autoridad del dominio y los enlaces de otras webs, la competencia de cada búsqueda, la velocidad y la salud técnica del sitio (hosting, caché, Core Web Vitals), que Google indexe las páginas y sus actualizaciones de algoritmo. Para un sitio nuevo, los resultados suelen tardar de 3 a 6 meses. Publicar mucho contenido sin valor propio puede **perjudicar** al sitio (política de Google sobre "contenido a escala").
+
+Consejos: registra cada sitio en [Search Console](https://search.google.com/search-console) y envía el sitemap de Rank Math/Yoast; agrupa los artículos por temas (un pilar con artículos que lo enlazan); y revisa de vez en cuando los borradores y los informes de `runs_recent`.
+
+### Conectar Search Console (recomendado)
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto, activa **Google Search Console API** y crea una **cuenta de servicio** (IAM → Cuentas de servicio → Crear). En la cuenta, pestaña **Claves → Agregar clave → JSON**: se descarga un archivo `.json`. Guárdalo en un lugar seguro.
+2. En Search Console, en cada propiedad: **Configuración → Usuarios y permisos → Añadir usuario**, pega el correo de la cuenta de servicio (`...@...iam.gserviceaccount.com`) con permiso **Restringido**.
+3. Ejecuta `configurar-claves` y, en la pregunta de Search Console, pega la **ruta del archivo `.json`**. En la nube, crea la variable `GOOGLE_SERVICE_ACCOUNT_JSON` con el **contenido** del archivo.
+4. Comprueba con Claude: *"site_check de viajesok"* (debe decir `searchConsole: ok`). Si la propiedad es de tipo URL en vez de dominio, pon en el perfil `"searchConsole": { "property": "https://viajesok.com/" }`.
+
+### ¿Y SEOWriting.ai?
+No tiene una API pública que se pueda conectar de forma fiable, así que no se integra directamente; manejarlo desde Chrome sería frágil y gastaría tus créditos. Autoblog incorpora lo que lo hace bueno (análisis de los primeros resultados, términos y puntuación SEO) y además verifica fuentes, cifras y citas contra lo que dicen las fuentes. Puedes seguir usando SEOWriting.ai para artículos puntuales en paralelo: Autoblog detecta los temas ya publicados y no los repite.
+
+## 6. Uso dentro de una conversación
 
 En Claude Desktop o Claude Code, por ejemplo:
 
@@ -116,10 +150,13 @@ En Claude Desktop o Claude Code, por ejemplo:
 - *"Autoblog: revisa a qué sitios les toca publicar y hazlo"*
 - *"Añade a la cola de onchile estos temas: …"*
 - *"Muéstrame las últimas ejecuciones de viajesok"*
+- *"Busca oportunidades SEO de viajesok y carga 10 temas en la cola"*
+- *"Actualiza el artículo más antiguo de onchile"*
+- *"Analiza la palabra clave 'qué ver en valparaíso' y dime cómo superar a los primeros resultados"*
 
-## 6. Publicación automática
+## 7. Publicación automática
 
-Cada sitio publica según su `frequency.everyHours`. La tarea automática solo tiene que **revisar cada 1–3 horas** a qué sitios les toca (`sites_due`).
+Cada sitio publica según su `frequency.everyHours` y dentro de su franja horaria `publishing.hours` (hora de Chile por defecto). La tarea automática solo tiene que **revisar cada 1–3 horas** a qué sitios les toca (`sites_due`); los borradores también cuentan, así que un artículo que no pasó los controles no provoca reintentos cada 2 horas. Una vez por semana (`refresh.everyHours`) también actualiza un artículo antiguo.
 
 ### Opción A: tareas programadas de Claude Desktop (la más simple)
 Si tu Claude Desktop tiene **Tareas programadas** (en Cowork), crea una cada 2 horas con el texto:
@@ -150,19 +187,19 @@ Claude Code en la nube puede ejecutar este repositorio con una tarea programada 
 2. Crea una tarea programada en ese entorno, cada 2 horas, con el texto:
    > Lee wordpress/skills/autoblog/SKILL.md y síguelo para publicar en todos los sitios a los que les toca.
 
-En la nube no se guarda la cola local de temas entre ejecuciones; usa `topics.seedTopics` del perfil o deja que Claude proponga temas (los duplicados se evitan consultando WordPress).
+Con el plugin Bridge instalado, la nube y tu PC comparten la cola de temas, el historial y el bloqueo (todo se guarda en WordPress), así que puedes usar ambos a la vez. Sin el plugin, la nube no conserva la cola entre ejecuciones.
 
-## 7. Imágenes y derechos
+## 8. Imágenes y derechos
 
 - **Fotos de internet**: solo las que devuelve `images_search` (licencias que permiten uso comercial), con autor y licencia en el pie de foto. **No** se usan imágenes de Google ni de otros medios: publicar fotos sin licencia puede traer reclamaciones y la retirada del contenido.
 - **Magnific**: banco de imágenes con licencia de tu plan, o imagen generada.
 - **Higgsfield**: imagen generada.
 - Las imágenes generadas nunca muestran personas reales reconocibles ni simulan hechos reales, y llevan el pie "Imagen ilustrativa generada con IA".
 
-## 8. Salvaguardas
+## 9. Salvaguardas
 
 Antes de publicar, el servidor:
-1. Rechaza títulos ya publicados en el sitio.
+1. Rechaza títulos ya publicados y pasa a borrador los casi iguales a uno existente.
 2. Limpia el HTML (bloques de código, `<h1>` duplicado).
 3. Quita enlaces rotos o que llevan a páginas de error.
 4. Comprueba que cada cifra y cada cita textual aparezcan en las fuentes.
@@ -173,21 +210,24 @@ Recomendación: los primeros días pon `"status": "draft"` en los perfiles, revi
 
 Aviso: Google penaliza el contenido publicado en masa sin valor propio ("scaled content abuse"). Mejor pocos artículos buenos, bien documentados y con un ángulo propio que muchos genéricos.
 
-## 9. Herramientas del servidor MCP
+## 10. Herramientas del servidor MCP
 
 | Herramienta | Qué hace |
 |---|---|
 | `sites_list`, `site_get`, `site_save_profile`, `site_check` | Ver, crear o editar perfiles y probar la conexión. |
-| `sites_due` | A qué sitios les toca publicar. |
+| `sites_due` | A qué sitios les toca publicar o actualizar (frecuencia, franja horaria, borradores). |
 | `run_begin`, `run_end`, `runs_recent` | Inicio y fin de una ejecución (bloqueo, contexto, registro). |
-| `topics_add`, `topics_next`, `topics_list` | Cola de temas por sitio. |
+| `topics_add`, `topics_next`, `topics_list`, `topics_check_similar` | Cola de temas por sitio y detección de temas ya cubiertos. |
+| `seo_keyword_ideas`, `seo_opportunities`, `seo_search_console` | Palabras clave reales (autocompletado de Google) y datos de Search Console. |
+| `seo_serp_analysis`, `seo_content_score` | Análisis de los primeros resultados y puntuación SEO del borrador. |
 | `research_search`, `research_fetch` | Buscar fuentes (Tavily/Brave) y leerlas como texto. |
 | `images_search` | Fotos con licencia y atribución. |
 | `content_verify` | Verifica cifras, citas, enlaces y título contra las fuentes. |
-| `wp_recent_posts`, `wp_terms` | Artículos recientes y categorías/etiquetas. |
+| `wp_recent_posts`, `wp_terms`, `wp_find_related`, `wp_stale_posts`, `wp_get_post` | Artículos recientes, relacionados (enlazado interno) y antiguos; categorías y etiquetas. |
+| `notify_send` | Correo con el sistema de WordPress (requiere el plugin Bridge). |
 | `wp_upload_media`, `wp_create_post`, `wp_update_post` | Subir imágenes y publicar o editar. |
 
-## 10. Solución de problemas
+## 11. Solución de problemas
 
 | Problema | Solución |
 |---|---|
@@ -198,12 +238,15 @@ Aviso: Google penaliza el contenido publicado en masa sin valor propio ("scaled 
 | "SEO no aplicado" | Instala el plugin Autoblog Bridge. |
 | Todo queda en borrador | Lee los avisos en la respuesta o en `runs_recent`: suele ser falta de fuentes o cifras sin respaldo. |
 | No encuentra fotos | Openverse limita las consultas anónimas por hora; añade una clave de Pexels o usa Magnific. |
+| No publica a cierta hora | Revisa `publishing.hours` y `publishing.timezone` del perfil (`sites_due` explica el motivo). |
+| `searchConsole: error` | Revisa que el correo de la cuenta de servicio esté añadido a la propiedad y que la propiedad del perfil coincida (`sc-domain:` o URL). |
+| No llegan los avisos | Tu WordPress no envía correo: instala un plugin SMTP (WP Mail SMTP, FluentSMTP). |
 
 ## Desarrollo
 
 ```bash
 cd mcp-server
 npm install
-npm test            # pruebas con un WordPress simulado
+npm test            # pruebas con un WordPress simulado (también corren en Windows y Mac con GitHub Actions)
 node mcpb/build.mjs # desde wordpress/: genera dist/autoblog.mcpb
 ```
